@@ -408,11 +408,13 @@ indices 0 - 7 from high bit to low bit, respectively. The next one
 The 'have' message's payload is a single number, the index which
 that downloader just completed and checked the hash of.
 
-'request' messages contain an index, begin, and length. The last
-two are byte offsets. Length is generally a power of two unless it
+'request' messages contain an index, hashlist layers, begin, and length.
+The last two are byte offsets. Hashlist layers is the the number
+of layers from the tree hash, starting from the leaves, that are needed
+to verify the chunk's hash. Length is generally a power of two unless it
 gets truncated by the end of a file. All current implementations use
 2^14 (16 kiB), and close connections which request an amount greater than
-that.
+that. A request MUST be answered with either a piece or reject message.
 
 'cancel' messages have the same payload as request messages. They
 are generally only sent towards the end of a download, during what's
@@ -427,15 +429,19 @@ time a piece arrives.
 cancel messages do not relieve the other side from the duty of responding
 to a request. They must either send a piece or a reject message as response. 
 
-'reject' messages have the  same payload as request messages. They
+'reject' messages have the same payload as request messages. They
 indicate that a peer will not service a request. They must
 be sent after a choke message to cancel all pending requests.
 
-'piece' messages contain an index, begin, and piece. Note that they
-are correlated with request messages must be explicitly rejected
-by the remote after an unchoke. This means a request is answered
-with either a piece or reject messages. If an unsolicited piece
-is received a peer MUST close the connection.
+'piece' messages contain an index, begin, hashlist layers, hashlist, and piece.
+Note that they MUST be correlated with request messages. If an unsolicited
+piece is received a peer MUST close the connection. The hashlist contains
+uncle hashes necessary to verrify the chunk's hash. It is a string of
+concatinated tree hashes from the requested number of layers in breadth first,
+top down order. The last two hashes in the list are the chunk's hash and
+its sibling's. If the requested number of hashlist layers is zero then no
+hashlist is included in this message.
+
 
 Downloaders generally download pieces in random order, which does a
 reasonably good job of keeping them from having a strict subset or
